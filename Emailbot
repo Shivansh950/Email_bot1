@@ -1,1 +1,104 @@
 
+import smtplib
+import speech_recognition as sr
+import socket
+import pyttsx3
+from email.message import EmailMessage
+
+# Initialize the recognizer and the TTS engine
+listener = sr.Recognizer()
+engine = pyttsx3.init()
+
+# Configure TTS engine for faster response
+engine.setProperty('rate', 180)  # Increase speech rate
+
+def talk(text):
+    engine.say(text)
+    engine.runAndWait()
+
+def get_info(prompt):
+    try:
+        with sr.Microphone() as source:
+            talk(prompt)
+            print(f"{prompt} (Listening...)")
+            voice = listener.listen(source, timeout=5, phrase_time_limit=5)
+            info = listener.recognize_google(voice)
+            print(f"Recognized command: {info}")
+            return info.lower()
+    except sr.WaitTimeoutError:
+        print("Listening timed out while waiting for phrase to start.")
+        return ""
+    except sr.UnknownValueError:
+        print("Could not understand audio.")
+        return ""
+    except Exception as e:
+        print(f"An error occurred: {e}")
+        return ""
+
+def send_email(receiver, subject, message):
+    server = None
+    try:
+        # Establish connection to the SMTP server
+        print("Connecting to SMTP server...")
+        server = smtplib.SMTP('smtp.gmail.com', 587)
+
+        # Start TLS for security
+        print("Starting TLS...")
+        server.starttls()
+
+        # Log in to your email account
+        email = 'grand@gmail.com'
+        password = 'plyb amji gjck jczb'  # Consider using a more secure way to handle passwords
+        print("Logging in...")
+        server.login(email, password)
+
+        # Send the email
+        email_msg = EmailMessage()
+        email_msg['From'] = email
+        email_msg['To'] = receiver
+        email_msg['Subject'] = subject
+        email_msg.set_content(message)
+        server.send_message(email_msg)
+        print("Email sent successfully.")
+
+    except smtplib.SMTPAuthenticationError:
+        print("Failed to login: Check your username and password.")
+    except smtplib.SMTPException as e:
+        print(f"SMTP error occurred: {e}")
+    except socket.gaierror:
+        print("Network error: Unable to connect to the SMTP server. Check your internet connection.")
+    except Exception as e:
+        print(f"An error occurred: {e}")
+    finally:
+        if server:
+            # Close the connection
+            print("Closing the connection.")
+            server.quit()
+
+# Predefined email list for quick lookup
+email_list = {
+    'myself': 'vermashivansh1612@gmail.com',
+    'my self': 'vermashivansh1612@gmail.com',
+   
+           
+}
+
+def get_email_info():
+    name = get_info('Hi Mr. Shivansh, I am Jarvis. To whom do you want to send the email, sir?')
+    receiver = email_list.get(name)
+
+    if receiver:
+        subject = get_info('What is the subject of the email?')
+        message = get_info('Tell me the text to be sent.')
+
+        if subject and message:
+            send_email(receiver, subject, message)
+        else:
+            talk("I couldn't understand the subject or message. Please try again.")
+            get_email_info()
+    else:
+        talk("I couldn't find the email address. Please try again.")
+        get_email_info()
+
+# Call the function to get email info
+get_email_info()
